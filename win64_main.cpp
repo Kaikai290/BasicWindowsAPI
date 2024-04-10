@@ -32,7 +32,7 @@ TODO(Kai):
 - .....
 */
 
-struct offscreen_buffer
+struct windows_offscreen_buffer
 {
 BITMAPINFO info;
 void *Memory;
@@ -42,7 +42,7 @@ int Pitch;
 };
 
 static bool GlobalRunning = true;
-static offscreen_buffer GlobalBackBuffer;
+static windows_offscreen_buffer GlobalBackBuffer;
 static LPDIRECTSOUNDBUFFER GlobalSecondaryBuffer;
 
 
@@ -265,7 +265,7 @@ static window_dimension GetWindowDimension(HWND Window)
 
 
 
-static void ResizeDIBSection(offscreen_buffer *Buffer ,int Width, int Height) // Resizing windows
+static void ResizeDIBSection(windows_offscreen_buffer *Buffer ,int Width, int Height) // Resizing windows
 {
   // TODO(Kai): Bulletproof this
   // Maybe don't free first, free after, then free first if that fails.
@@ -297,7 +297,7 @@ static void ResizeDIBSection(offscreen_buffer *Buffer ,int Width, int Height) //
   //TODO(Kai): Probably want to clear this to black
   }
 
-static void UpdateWins(offscreen_buffer *Buffer, int WindowWidth, int WindowHeight, HDC DeviceContent)
+static void UpdateWins(windows_offscreen_buffer *Buffer, int WindowWidth, int WindowHeight, HDC DeviceContent)
 {
   int AspectRatio = 1280/720;
   //TODO(Kai): Aspect Ratio Correction
@@ -432,7 +432,7 @@ int CALLBACK WinMain(
 
       // Graphics Test
       int XOffset = 0;
-      int YOffset = 0;
+      int YOffset = 0; 
 
       SoundOutput SoundOutput;
 
@@ -489,17 +489,25 @@ int CALLBACK WinMain(
             // Note: The Controller is not connected
           }
         }
-        
-        game_offscreen_buffer rBuffer = {};
+        // Note: This is bad remove when possible
+        int16_t Samples[48000/30 * 2];
+        sound_output_buffer SoundBuffer = {};
+        SoundBuffer.SamplePerSecond = SoundOutput.SamplePerSecond;
+        SoundBuffer.SampleCount = SoundBuffer.SamplePerSecond / 30;
+        SoundBuffer.Samples = Samples;
+
+
+
+        offscreen_buffer rBuffer = {};
         rBuffer.Memory = GlobalBackBuffer.Memory;
         rBuffer.Width = GlobalBackBuffer.Width;
         rBuffer.Height = GlobalBackBuffer.Height;
         rBuffer.Pitch = GlobalBackBuffer.Pitch;
 
-        GameUpdateAndRendering(&rBuffer);
+        UpdateAndRendering(&rBuffer, &SoundBuffer);
 
 
-        DoSound(&SoundOutput);
+        //DoSound(&SoundOutput);
         
 
         HDC DeviceContext = GetDC(Window);
