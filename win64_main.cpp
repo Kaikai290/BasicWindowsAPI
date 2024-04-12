@@ -220,22 +220,16 @@ static void FillSoundBuffer(SoundOutput* SoundOutput, DWORD BytesToLock, DWORD B
     int16_t *SourceSample = SoundBuffer->Samples;
     for(DWORD SampleIndex = 0; SampleIndex < Region1SampleCount; ++SampleIndex)
     {
-      double t = (2.0f * 3.14f)*(double)SoundOutput->RunningSampleIndex / (double)SoundOutput->WavePeriod;
-      double SineValue = sinf(t);
-      int16_t SampleValue = (int16_t)(SineValue * SoundOutput->ToneVolume);
-      *DestOut++ = SampleValue++;
-      *DestOut++ = SampleValue++;
+      *DestOut++ = *SourceSample++;
+      *DestOut++ = *SourceSample++;
       ++SoundOutput->RunningSampleIndex;
     }
     DWORD Region2SampleCount = Region2Size/SoundOutput->BytesPerSample;
     DestOut = (int16_t *)Region2;
     for(DWORD SampleIndex = 0; SampleIndex < Region2SampleCount; ++SampleIndex)
     {
-      double t = (2.0f * 3.14f)*(double)SoundOutput->RunningSampleIndex / (double)SoundOutput->WavePeriod;
-      double SineValue = sinf(t);
-      int16_t SampleValue = (int16_t)(SineValue * SoundOutput->ToneVolume);
-      *DestOut++ = SampleValue++;
-      *DestOut++ = SampleValue++;
+      *DestOut++ = *SourceSample++;
+      *DestOut++ = *SourceSample++;
       ++SoundOutput->RunningSampleIndex;
     }
     GlobalSecondaryBuffer->Unlock(Region1, Region1Size, Region2, Region2Size);
@@ -487,32 +481,32 @@ int CALLBACK WinMain(
         DWORD WriteCursor;
         DWORD BytesToLock;
         DWORD TargetCursor;
-        DWORD BytesToWrite;;
+        DWORD BytesToWrite;
         bool SoundIsValid = false;
         if(SUCCEEDED(GlobalSecondaryBuffer->GetCurrentPosition(&PlayCursor, &WriteCursor)))
         {
           SoundIsValid = true;
           BytesToLock = (SoundOutput.RunningSampleIndex * SoundOutput.BytesPerSample)
                                  % SoundOutput.SecondaryBufferSize;
-          TargetCursor = (PlayCursor + (SoundOutput.LatencySampleCount*
-                                  SoundOutput.BytesPerSample) % SoundOutput.SecondaryBufferSize);         
+          TargetCursor = ((PlayCursor + (SoundOutput.LatencySampleCount*
+                                  SoundOutput.BytesPerSample)) % SoundOutput.SecondaryBufferSize);         
           // TODO(Kai): Change this to have a lower latency offset for more accurate sound
           // when we have implimented sound effects.
-          if(BytesToLock == TargetCursor)
-          {
-            if(SoundOutput.IsSoundPlaying)
-            {
-              BytesToWrite = 0;
-            }
-            else
-            {
-                BytesToWrite = SoundOutput.SecondaryBufferSize;
-            }
-          }
-          else if(BytesToLock > TargetCursor)
+          // if(BytesToLock == PlayCursor)
+          // {
+          //   if(SoundOutput.IsSoundPlaying)
+          //   {
+          //     BytesToWrite = 0;
+          //   }
+          //   else
+          //   {
+          //       BytesToWrite = SoundOutput.SecondaryBufferSize;
+          //   }
+          // }
+          if(BytesToLock > TargetCursor)
           {
             BytesToWrite = SoundOutput.SecondaryBufferSize - BytesToLock;
-            BytesToWrite += PlayCursor;
+            BytesToWrite += TargetCursor;
           }
           else
           {
