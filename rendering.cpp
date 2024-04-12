@@ -21,29 +21,30 @@ static void Render(offscreen_buffer *Buffer, int XOffset, int YOffset)
   }
 }
 
-static void OutputSound(sound_output_buffer SoundBuffer)
+static void OutputSound(sound_output_buffer *SoundBuffer)
 {
-  uint32_t RunningSampleIndex = 0;
-  int ToneHz = 256;
-  int WavePeriod = SoundBuffer.SamplePerSecond/ToneHz;
+  static double tSine;
   int16_t ToneVolume = 2000/2;
+  int ToneHz = 256;
+  int WavePeriod = SoundBuffer->SamplePerSecond/ToneHz;
 
-  int16_t *SampleOut = SoundBuffer.Samples;
-
-  for(int SampleIndex = 0; SampleIndex < SoundBuffer.SampleCount; ++SampleIndex)
+  int16_t *SampleOut = SoundBuffer->Samples;
+  for(int SampleIndex = 0; SampleIndex < SoundBuffer->SampleCount; ++SampleIndex)
   {
-    float t = (2.0f * 3.14f)*(float)RunningSampleIndex / (float)WavePeriod;
-    float SineValue = sinf(t);
-    *SampleOut++ = (int16_t)(SineValue * ToneVolume);
-    *SampleOut++ = (int16_t)(SineValue * ToneVolume); 
+    double SineValue = sinf(tSine);
+    int16_t SampleValue = (int16_t)(SineValue * ToneVolume);
+    *SampleOut++ = SampleValue;
+    *SampleOut++ = SampleValue;
+
+    tSine += 2.0f*3.14f*1.0f/(double)WavePeriod;
   }
 }
 
-void UpdateAndRendering(offscreen_buffer *Buffer, sound_output_buffer *SoundBuffer)
+static void UpdateAndRendering(offscreen_buffer *Buffer, sound_output_buffer *SoundBuffer)
 {
     // TODO(Kai): deal with the case when the sound is not directly after the preious sound
     //Allow sample offsets
-    OutputSound(*SoundBuffer);
+    OutputSound(SoundBuffer);
     int BlueOffset = 0;
     int GreenOffset = 0;
     Render(Buffer, BlueOffset, GreenOffset);
