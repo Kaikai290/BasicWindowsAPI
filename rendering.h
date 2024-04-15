@@ -2,7 +2,7 @@
 #include <math.h>
 #include <stdint.h>
 
-struct offscreen_buffer
+struct graphics_offscreen_buffer
 {
 void *Memory;
 int Width;
@@ -16,11 +16,11 @@ struct sound_output_buffer
     int SampleCount;
     int SamplePerSecond;
 };
-static void Render(offscreen_buffer *Buffer, int XOffset, int YOffset);
+static void Render(graphics_offscreen_buffer *Buffer, int XOffset, int YOffset);
 
 static void OutputSound(sound_output_buffer *SoundBuffer);
 
-void UpdateAndRendering(offscreen_buffer *Buffer, sound_output_buffer *SoundBuffer);
+void UpdateAndRendering(graphics_offscreen_buffer *Buffer, sound_output_buffer *SoundBuffer);
 
 #define RENDERING_H
 #endif

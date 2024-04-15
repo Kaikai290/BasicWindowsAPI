@@ -4,6 +4,7 @@
 #include <dsound.h>
 #include <math.h>
 #include <stdio.h>
+#include <malloc.h>
 
 #include "rendering.cpp"
 
@@ -262,7 +263,10 @@ static void ResizeDIBSection(windows_offscreen_buffer *Buffer ,int Width, int He
 
   Buffer->Height = Height;
   Buffer->Width = Width;
-  Buffer->Pitch = Width*4;
+  int BytesPerPixel = 4;
+
+  //Note: When the biHeight is negative, this is the clue for windows to treat this bitmap as 
+  //top-down, meaning the first 3 bytes are the colour of the top-left pixel
 
   Buffer->info.bmiHeader.biSize = sizeof(Buffer->info.bmiHeader);
   Buffer->info.bmiHeader.biWidth = Buffer->Width;
@@ -276,9 +280,9 @@ static void ResizeDIBSection(windows_offscreen_buffer *Buffer ,int Width, int He
   Buffer->info.bmiHeader.biClrUsed = 0;
   Buffer->info.bmiHeader.biClrImportant = 0;
 
-  int BitmapMemorySize = 4*(Buffer->Width * Buffer->Height); // 4 is the amount of bytes per pixel. 32/8 from the biBitCount
+  int BitmapMemorySize = BytesPerPixel*(Buffer->Width * Buffer->Height); // 4 is the amount of bytes per pixel. 32/8 from the biBitCount
   Buffer->Memory = VirtualAlloc(0 , BitmapMemorySize, MEM_COMMIT, PAGE_READWRITE);
-
+  Buffer->Pitch = Width * BytesPerPixel;
   //TODO(Kai): Probably want to clear this to black
   }
 
@@ -333,7 +337,9 @@ LRESULT MainWindowCallback(HWND Window, UINT Message, WPARAM WParam, LPARAM LPar
         bool IsDown = ((LParam & (1<<30)) == 0);
         if(WasDown != IsDown)
         {
-          if(VKCode == 'W'){}
+          if(VKCode == 'W')
+          {
+          }
           else if(VKCode == 'A'){}
           else if(VKCode == 'S'){}
           else if(VKCode == 'D'){}
@@ -424,6 +430,10 @@ int CALLBACK WinMain(
       ClearSoundBuffer(&SoundOutput);
       GlobalSecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
 
+      //TODO: Combine with bitmap VirtualAlloc
+      int16_t *Samples = (int16_t *)VirtualAlloc(0, SoundOutput.SecondaryBufferSize,
+                                                MEM_COMMIT, PAGE_READWRITE);
+
       LARGE_INTEGER LastCounter;
       QueryPerformanceCounter(&LastCounter);
       int64_t LastCycleCount = __rdtsc();
@@ -477,12 +487,14 @@ int CALLBACK WinMain(
           }
         }
 
-        DWORD PlayCursor;
-        DWORD WriteCursor;
-        DWORD BytesToLock;
-        DWORD TargetCursor;
-        DWORD BytesToWrite;
+        DWORD PlayCursor = 0;
+        DWORD WriteCursor = 0;
+        DWORD BytesToLock = 0;
+        DWORD TargetCursor = 0;
+        DWORD BytesToWrite = 0;
         bool SoundIsValid = false;
+        //TODO: Tighten up sound logic so that we know where we should
+        // be writing to and can anticipate the time spent in the game update
         if(SUCCEEDED(GlobalSecondaryBuffer->GetCurrentPosition(&PlayCursor, &WriteCursor)))
         {
           SoundIsValid = true;
@@ -490,19 +502,6 @@ int CALLBACK WinMain(
                                  % SoundOutput.SecondaryBufferSize;
           TargetCursor = ((PlayCursor + (SoundOutput.LatencySampleCount*
                                   SoundOutput.BytesPerSample)) % SoundOutput.SecondaryBufferSize);         
-          // TODO(Kai): Change this to have a lower latency offset for more accurate sound
-          // when we have implimented sound effects.
-          // if(BytesToLock == PlayCursor)
-          // {
-          //   if(SoundOutput.IsSoundPlaying)
-          //   {
-          //     BytesToWrite = 0;
-          //   }
-          //   else
-          //   {
-          //       BytesToWrite = SoundOutput.SecondaryBufferSize;
-          //   }
-          // }
           if(BytesToLock > TargetCursor)
           {
             BytesToWrite = SoundOutput.SecondaryBufferSize - BytesToLock;
@@ -519,19 +518,18 @@ int CALLBACK WinMain(
         }
 
         // Note: This is bad remove when possible
-        int16_t Samples[48000 * 2];
         sound_output_buffer SoundBuffer = {};
         SoundBuffer.SamplePerSecond = SoundOutput.SamplePerSecond;
         SoundBuffer.SampleCount = BytesToWrite/SoundOutput.BytesPerSample;
         SoundBuffer.Samples = Samples;
 
-        offscreen_buffer rBuffer = {};
-        rBuffer.Memory = GlobalBackBuffer.Memory;
-        rBuffer.Width = GlobalBackBuffer.Width;
-        rBuffer.Height = GlobalBackBuffer.Height;
-        rBuffer.Pitch = GlobalBackBuffer.Pitch;
+        graphics_offscreen_buffer gBuffer = {};
+        gBuffer.Memory = GlobalBackBuffer.Memory;
+        gBuffer.Width = GlobalBackBuffer.Width;
+        gBuffer.Height = GlobalBackBuffer.Height;
+        gBuffer.Pitch = GlobalBackBuffer.Pitch;
 
-        UpdateAndRendering(&rBuffer, &SoundBuffer);
+        UpdateAndRendering(&gBuffer, &SoundBuffer);
 
         if(SoundIsValid)
         {

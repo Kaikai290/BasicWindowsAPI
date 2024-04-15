@@ -2,7 +2,7 @@
 
 
 
-static void Render(offscreen_buffer *Buffer, int XOffset, int YOffset)
+static void Render(graphics_offscreen_buffer *Buffer, int XOffset, int YOffset)
 {
   // TODO(Kai): Let's see what the optimizer does
 
@@ -40,7 +40,7 @@ static void OutputSound(sound_output_buffer *SoundBuffer)
   }
 }
 
-static void UpdateAndRendering(offscreen_buffer *Buffer, sound_output_buffer *SoundBuffer)
+static void UpdateAndRendering(graphics_offscreen_buffer *Buffer, sound_output_buffer *SoundBuffer)
 {
     // TODO(Kai): deal with the case when the sound is not directly after the preious sound
     //Allow sample offsets
