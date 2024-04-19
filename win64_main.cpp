@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <malloc.h>
 
+#include "win64_main.h"
 #include "rendering.cpp"
 
 
@@ -33,25 +34,13 @@ TODO(Kai):
 - .....
 */
 
-struct windows_offscreen_buffer
-{
-BITMAPINFO info;
-void *Memory;
-int Width;
-int Height;
-int Pitch;
-};
 
 static bool GlobalRunning = true;
 static windows_offscreen_buffer GlobalBackBuffer;
 static LPDIRECTSOUNDBUFFER GlobalSecondaryBuffer;
 
 
-struct window_dimension
-{
-    int Width;
-    int Height;
-};
+
 // NOTE(Kai): This is our support for XInputSet/GetState
 #define X_INPUT_GET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex,  XINPUT_STATE* pState)
 #define X_INPUT_SET_STATE(name) DWORD WINAPI name(DWORD  dwUserIndex,  XINPUT_VIBRATION* pVibration)
@@ -91,18 +80,7 @@ static void LoadXInput()
   }
 }
 
-struct SoundOutput
-{
-      int SamplePerSecond = 48000;
-      uint32_t RunningSampleIndex = 0;
-      int ToneHz = 256;
-      int WavePeriod = SamplePerSecond/ToneHz;
-      int BytesPerSample = sizeof(int16_t)*2;
-      int SecondaryBufferSize = SamplePerSecond*BytesPerSample;
-      int16_t ToneVolume = 2000/2;
-      bool IsSoundPlaying = false;
-      int LatencySampleCount = SamplePerSecond/60;
-}; 
+
 
 static void InitDSound(HWND Window, int32_t SamplespPerSecond, int32_t BufferSize)
 {
@@ -389,6 +367,13 @@ LRESULT MainWindowCallback(HWND Window, UINT Message, WPARAM WParam, LPARAM LPar
   return Result;
 }
 
+static void ProcessXInputDigitalButton(button_state *OldState, button_state *NewState,
+DWORD XInputButtonState, DWORD ButtonBit)
+{
+  NewState->EndedDown = ((XInputButtonState & ButtonBit) == ButtonBit);
+  NewState->HalfTransitionCount = (OldState->EndedDown != NewState->EndedDown) ? 1 : 0;
+}
+
 int CALLBACK WinMain(
   HINSTANCE Instance,
   HINSTANCE PrevInstance,
@@ -396,6 +381,10 @@ int CALLBACK WinMain(
   int       ShowCmd
 )
 {
+  LARGE_INTEGER PerformanceCounterFrequencyResult;
+  QueryPerformanceFrequency(&PerformanceCounterFrequencyResult);
+  int64_t PerformanceCounterFrequency = PerformanceCounterFrequencyResult.QuadPart; 
+
   LoadXInput();
   WNDCLASSEXA WindowClass = {}; // {} - Init to zero
 
@@ -408,31 +397,26 @@ int CALLBACK WinMain(
   //WindowClass.hIcon;
   WindowClass.lpszClassName = "Handmade Class";
 
-  LARGE_INTEGER PerformanceCounterFrequencyResult;
-  QueryPerformanceFrequency(&PerformanceCounterFrequencyResult);
-  int64_t PerformanceCounterFrequency = PerformanceCounterFrequencyResult.QuadPart; 
-
   if(RegisterClassExA(&WindowClass))
   {
     HWND Window = CreateWindowExA(0, WindowClass.lpszClassName, "Handmade",
-     WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT,
-      CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, 0, 0, Instance, 0);
+                                  WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT,
+                                  CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, 0, 0, Instance, 0);
     if(Window)
     {
       HDC DeviceContext = GetDC(Window);
-
-      // Graphics Test
-      int XOffset = 0;
-      int YOffset = 0; 
-
       SoundOutput SoundOutput;
+
       InitDSound(Window, SoundOutput.SamplePerSecond, SoundOutput.SecondaryBufferSize);
       ClearSoundBuffer(&SoundOutput);
       GlobalSecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
-
       //TODO: Combine with bitmap VirtualAlloc
       int16_t *Samples = (int16_t *)VirtualAlloc(0, SoundOutput.SecondaryBufferSize,
                                                 MEM_COMMIT, PAGE_READWRITE);
+
+      app_input Input[2] = {};
+      app_input *NewInput = &Input[0];
+      app_input *OldInput = &Input[1];
 
       LARGE_INTEGER LastCounter;
       QueryPerformanceCounter(&LastCounter);
@@ -442,6 +426,8 @@ int CALLBACK WinMain(
       {   
         
         MSG Message;
+
+
         while(PeekMessageA(&Message, 0, 0, 0, PM_REMOVE))
         {
           if(Message.message == WM_QUIT)
@@ -454,9 +440,17 @@ int CALLBACK WinMain(
         }
 
         // TODO(Kai): Should we poll this more frequently 
-        DWORD dwResult;    
-        for (DWORD ControllerIndex=0; ControllerIndex< XUSER_MAX_COUNT; ++ControllerIndex )
+        int MaxControllerCount = XUSER_MAX_COUNT;
+        if(MaxControllerCount > ArrayCount(NewInput->Controllers))
         {
+          MaxControllerCount = ArrayCount(NewInput->Controllers);
+        }
+        DWORD dwResult; // Remove From loop?
+        for (DWORD ControllerIndex=0; ControllerIndex < MaxControllerCount; ++ControllerIndex )
+        {
+          controller_input *OldController = &OldInput->Controllers[ControllerIndex];
+          controller_input *NewController = &NewInput->Controllers[ControllerIndex];
+
           XINPUT_STATE ControllerState;
           dwResult = XInputGetState(ControllerIndex, &ControllerState);
           if(dwResult == ERROR_SUCCESS)
@@ -469,17 +463,54 @@ int CALLBACK WinMain(
             bool DPadDown = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN);
             bool DPadLeft = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT);
             bool DPadRight = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT);
-            bool Start = (Pad->wButtons & XINPUT_GAMEPAD_START);
-            bool Back = (Pad->wButtons & XINPUT_GAMEPAD_BACK);
-            bool LeftShoulder = (Pad->wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER);
-            bool RightShoulder = (Pad->wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER);
-            bool AButton = (Pad->wButtons & XINPUT_GAMEPAD_A);
-            bool BButton = (Pad->wButtons & XINPUT_GAMEPAD_B);
-            bool XButton = (Pad->wButtons & XINPUT_GAMEPAD_X);
-            bool YButton = (Pad->wButtons & XINPUT_GAMEPAD_Y);
 
-            int16_t StickX = Pad->sThumbLX; 
-            int16_t StickY = Pad->sThumbLY;
+            //TODO: Deadzone handling using XINPUT_GAMPAD_XXXX_THUMB_DEADZONE
+            //TODO: MIN/MAX macros
+
+            NewController->IsAnalog = true;
+            NewController->StartX = OldController->EndX;
+            NewController->StartY = OldController->EndY;
+
+            float X;
+            if (Pad->sThumbLX < 0)
+            {
+              X = (float) Pad->sThumbLX / 32768.0f;
+            }
+            else
+            {
+              X = (float) Pad->sThumbLX / 32767.0f;
+            }
+            NewController->MinX = NewController->MaxX = NewController->EndX = X;
+
+            float Y;
+            if (Pad->sThumbLY < 0)
+            {
+              Y = (float) Pad->sThumbLY / 32768.0f;
+            }
+            else
+            {
+              Y = (float) Pad->sThumbLY / 32767.0f;
+            }
+            NewController->MinY = NewController->MaxY = NewController->EndY = Y;
+
+            
+            ProcessXInputDigitalButton(&OldController->Down, &NewController->Down,
+                    Pad->wButtons, XINPUT_GAMEPAD_A);
+            ProcessXInputDigitalButton(&OldController->Right, &NewController->Right,
+                    Pad->wButtons, XINPUT_GAMEPAD_B);
+            ProcessXInputDigitalButton(&OldController->Left, &NewController->Left,
+                    Pad->wButtons, XINPUT_GAMEPAD_X);
+            ProcessXInputDigitalButton(&OldController->Up, &NewController->Up,
+                    Pad->wButtons, XINPUT_GAMEPAD_Y);
+
+
+            // bool Start = (Pad->wButtons & XINPUT_GAMEPAD_START);
+            // bool Back = (Pad->wButtons & XINPUT_GAMEPAD_BACK);
+            // bool LeftShoulder = (Pad->wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER);
+            // bool RightShoulder = (Pad->wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER);
+
+
+            
           }
           else
           {
@@ -529,7 +560,7 @@ int CALLBACK WinMain(
         gBuffer.Height = GlobalBackBuffer.Height;
         gBuffer.Pitch = GlobalBackBuffer.Pitch;
 
-        UpdateAndRendering(&gBuffer, &SoundBuffer);
+        UpdateAndRendering(&gBuffer, &SoundBuffer, NewInput);
 
         if(SoundIsValid)
         {
@@ -556,12 +587,19 @@ int CALLBACK WinMain(
         int32_t FPS = PerformanceCounterFrequency / CounterElasped;
         int32_t MCPF = (int32_t)(CycleElasped/(1000*1000));
 
+
         char Buffer[256];
         sprintf(Buffer, "%dms, %dfps, %dmc/f\n", MSperFrame, FPS, MCPF);
         OutputDebugStringA(Buffer);
 
+        app_input *Temp = NewInput;
+        NewInput = OldInput;
+        OldInput = Temp;
+        // TODO: Should these be cleared?
+
+
         LastCounter = EndCounter;
-        LastCycleCount = EndCycleCount;
+        LastCycleCount = EndCycleCount;      
       }
     }
     else

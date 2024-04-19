@@ -1,26 +1,5 @@
 #include "rendering.h"
 
-
-
-static void Render(graphics_offscreen_buffer *Buffer, int XOffset, int YOffset)
-{
-  // TODO(Kai): Let's see what the optimizer does
-
-  
-  uint8_t *Row = (uint8_t *)Buffer->Memory;
-  for(int Y = 0; Y < Buffer->Height; ++Y)
-  {
-    uint32_t *Pixel = (uint32_t *)Row;
-    for (int X = 0; X < Buffer->Width; ++X)
-    {
-      uint8_t Blue = (X + XOffset + YOffset);
-      uint8_t Green = (Y + YOffset + XOffset);
-      *Pixel++ = ((Green << 8) | Blue);   
-    }
-    Row += Buffer->Pitch;
-  }
-}
-
 static void OutputSound(sound_output_buffer *SoundBuffer)
 {
   static double tSine;
@@ -40,12 +19,52 @@ static void OutputSound(sound_output_buffer *SoundBuffer)
   }
 }
 
-static void UpdateAndRendering(graphics_offscreen_buffer *Buffer, sound_output_buffer *SoundBuffer)
+static void Render(graphics_offscreen_buffer *Buffer, int XOffset, int YOffset)
+{
+  // TODO(Kai): Let's see what the optimizer does
+  uint8_t *Row = (uint8_t *)Buffer->Memory;
+  for(int Y = 0; Y < Buffer->Height; ++Y)
+  {
+    uint32_t *Pixel = (uint32_t *)Row;
+    for (int X = 0; X < Buffer->Width; ++X)
+    {
+      uint8_t Blue = (X + XOffset + YOffset);
+      uint8_t Green = (Y + YOffset + XOffset);
+      *Pixel++ = ((Green << 8) | Blue);   
+    }
+    Row += Buffer->Pitch;
+  }
+}
+
+static void UpdateAndRendering(graphics_offscreen_buffer *Buffer, sound_output_buffer *SoundBuffer, app_input *Input)
 {
     // TODO(Kai): deal with the case when the sound is not directly after the preious sound
     //Allow sample offsets
+    static int BlueOffset = 0;
+    static int GreenOffset = 0;
+
+    controller_input *Input0 = &Input->Controllers[0];
+    if(Input0->IsAnalog)
+    {
+      //NOTE: Use analog movement
+    }
+    else
+    {
+      //NOTE: Use digital movement
+    }
+
+    //Input.SpaceBarEndedDown;
+    //Input.SpaceBarHalfTransitionCount;
+    if(Input0->Down.EndedDown)
+    {
+      GreenOffset += 1;
+    }
+
+    // Input.StartX;
+    // Input.MinX;
+    // Input.MaxX;
+    // Input.EndX;
+
     OutputSound(SoundBuffer);
-    int BlueOffset = 0;
-    int GreenOffset = 0;
     Render(Buffer, BlueOffset, GreenOffset);
 }
