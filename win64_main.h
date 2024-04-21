@@ -2,8 +2,20 @@
 
 #include <windows.h>
 #include <stdint.h>
+//TODO: Complete macro
+#define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0])) 
 
-#define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
+#define Kilobytes(Value) ((Value)*1024LL)
+#define Megabytes(Value) (Kilobytes(Value)*1024LL)
+#define Gigabytes(Value) (Megabytes(Value)*1024LL)
+#define Terabytes(Value) (Gigabytes(Value)*1024LL)
+
+#if DEBUG
+#define Assert(Expression) \
+    if(!(Expression)){*(int *)0 = 0;} //Crash the code if it is not true
+#else
+#define Assert(Expression) 
+#endif
 
 struct windows_offscreen_buffer
 {

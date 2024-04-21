@@ -36,35 +36,40 @@ static void Render(graphics_offscreen_buffer *Buffer, int XOffset, int YOffset)
   }
 }
 
-static void UpdateAndRendering(graphics_offscreen_buffer *Buffer, sound_output_buffer *SoundBuffer, app_input *Input)
+static void UpdateAndRendering(graphics_offscreen_buffer *Buffer, sound_output_buffer *SoundBuffer, application_input *Input, application_memory *Memory)
 {
-    // TODO(Kai): deal with the case when the sound is not directly after the preious sound
-    //Allow sample offsets
-    static int BlueOffset = 0;
-    static int GreenOffset = 0;
+  Assert(sizeof(application_state) <= Memory->PermanentStorageSize);
+  // TODO(Kai): deal with the case when the sound is not directly after the preious sound
+  //Allow sample offsets
+  application_state *ApplicationState = (application_state *)Memory->PermanentStorage;
+  if(!Memory->IsInitialized)
+  {
+    ApplicationState->ToneHz = 256;
+    Memory->IsInitialized = true;
+  }
 
-    controller_input *Input0 = &Input->Controllers[0];
-    if(Input0->IsAnalog)
-    {
-      //NOTE: Use analog movement
-    }
-    else
-    {
-      //NOTE: Use digital movement
-    }
+  controller_input *Input0 = &Input->Controllers[0];
+  if(Input0->IsAnalog)
+  {
+    //NOTE: Use analog movement
+  }
+  else
+  {
+    //NOTE: Use digital movement
+  }
 
-    //Input.SpaceBarEndedDown;
-    //Input.SpaceBarHalfTransitionCount;
-    if(Input0->Down.EndedDown)
-    {
-      GreenOffset += 1;
-    }
+  //Input.SpaceBarEndedDown;
+  //Input.SpaceBarHalfTransitionCount;
+  if(Input0->Down.EndedDown)
+  {
+    ApplicationState->GreenOffset += 1;
+  }
 
-    // Input.StartX;
-    // Input.MinX;
-    // Input.MaxX;
-    // Input.EndX;
+  // Input.StartX;
+  // Input.MinX;
+  // Input.MaxX;
+  // Input.EndX;
 
-    OutputSound(SoundBuffer);
-    Render(Buffer, BlueOffset, GreenOffset);
+  OutputSound(SoundBuffer);
+  Render(Buffer, ApplicationState->BlueOffset, ApplicationState->GreenOffset);
 }

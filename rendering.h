@@ -40,7 +40,9 @@ struct controller_input
     float EndY;
     
     union
-    {   struct
+    {   
+        button_state Buttons[4];
+        struct 
         {
             button_state Up;
             button_state Left;
@@ -60,17 +62,38 @@ struct keyboard_input
     button_state D;
 };
 
-struct app_input
+struct application_input
 {
+    // TODO: Insert clock value here.
     controller_input Controllers[4];
     keyboard_input Keyboard[4];
 };
+
+struct application_state
+{
+    int GreenOffset;
+    int BlueOffset;
+    int ToneHz;
+};
+
+struct application_memory
+{
+    bool IsInitialized;
+    uint64_t PermanentStorageSize;
+    void *PermanentStorage; //NOTE: Requitred to be cleared to zero on start-up
+
+    uint64_t TransientStorageSize;
+    void *TransientStorage; //NOTE: Requitred to be cleared to zero on start-up
+};
+
 
 static void Render(graphics_offscreen_buffer *Buffer, int XOffset, int YOffset);
 
 static void OutputSound(sound_output_buffer *SoundBuffer);
 
-void UpdateAndRendering(graphics_offscreen_buffer *Buffer, sound_output_buffer *SoundBuffer, app_input *Input);
+void UpdateAndRendering(graphics_offscreen_buffer *Buffer, 
+                        sound_output_buffer *SoundBuffer, application_input *Input, 
+                        application_memory *Memory);
 
 #define RENDERING_H
 #endif
