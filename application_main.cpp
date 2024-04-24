@@ -1,4 +1,4 @@
-#include "rendering.h"
+#include "application_main.h"
 
 static void OutputSound(sound_output_buffer *SoundBuffer)
 {
@@ -44,10 +44,18 @@ static void UpdateAndRendering(graphics_offscreen_buffer *Buffer, sound_output_b
   application_state *ApplicationState = (application_state *)Memory->PermanentStorage;
   if(!Memory->IsInitialized)
   {
+    char *Filename = __FILE__;
+
+    debug_read_file_result File = DEBUGPlatformReadEntireFile(Filename);
+    if(File.Contents)
+    {
+      DEBUGPlatformWriteEntireFile("test.out", File.ContentsSize, File.Contents);
+      DEBUGPlatformFreeFileMemory(File.Contents);
+    }
     ApplicationState->ToneHz = 256;
     Memory->IsInitialized = true;
   }
-
+   
   controller_input *Input0 = &Input->Controllers[0];
   if(Input0->IsAnalog)
   {

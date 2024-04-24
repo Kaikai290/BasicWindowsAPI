@@ -1,17 +1,6 @@
-#include <windows.h>
-#include <stdint.h>
-#include <Xinput.h>
-#include <dsound.h>
-#include <math.h>
-#include <stdio.h>
-#include <malloc.h>
-
 #include "win64_main.h"
-#include "rendering.cpp"
+#include "application_main.cpp"
 
-
-#define local_persist static
-#define internal static
 // Day 001 in misc\shell.bat there is no path
 // TODO(Kai): This is a global for now
 
@@ -64,8 +53,6 @@ static x_input_set_state *XInputSetState_ = XInputSetStateStub;
 #define DIRECT_SOUND_CREATE(name) HRESULT WINAPI name(LPCGUID pcGuidDevice, LPDIRECTSOUND *ppDS, LPUNKNOWN pUnkOuter)
 typedef DIRECT_SOUND_CREATE(direct_sound_create);
 
-
-
 static void LoadXInput()
 {
   HMODULE XInputLibary = LoadLibraryA("xinput1_4.dll");
@@ -80,7 +67,89 @@ static void LoadXInput()
   }
 }
 
+static debug_read_file_result DEBUGPlatformReadEntireFile(char *Filename)
+{
+  debug_read_file_result Result = {};
 
+  HANDLE FileHandle =  CreateFileA(Filename,
+  GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+  if(FileHandle != INVALID_HANDLE_VALUE)
+  {
+    LARGE_INTEGER FileSize;
+    if(GetFileSizeEx(FileHandle, &FileSize))
+    {
+      //TODO: Define for maximun values UInt32Max
+      Assert(FileSize.QuadPart < 0xFFFFFFFF)
+      uint32_t FileSize32 = (uint32_t)FileSize.QuadPart;
+      Result.Contents = VirtualAlloc(0, FileSize.QuadPart, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
+      if(Result.Contents)
+      {
+        DWORD BytesRead;
+        if(ReadFile(FileHandle, Result.Contents, FileSize.QuadPart, &BytesRead, 0) &&
+        (FileSize32 == BytesRead))
+        {
+          //NOTE:File read successfully
+          Result.ContentsSize = FileSize32;
+        }
+        else
+        {
+          //TODO: Logging
+          DEBUGPlatformFreeFileMemory(Result.Contents);
+          Result.Contents = 0;
+        }
+      }
+      else
+      {
+        //TODO: Logging if VirtualAlloc Fails
+      }
+    }
+    else
+    {
+      //TODO: Logging if We couldnt get file size
+    }
+    CloseHandle(FileHandle);
+  }
+  else
+  {
+    //TODO: Logging
+  }
+  return Result;
+}
+
+static void DEBUGPlatformFreeFileMemory(void *Memory)
+{
+  if(Memory)
+  {
+    VirtualFree(Memory, 0, MEM_RELEASE);
+  }
+}
+
+static bool DEBUGPlatformWriteEntireFile(char *Filename, uint64_t MemorySize, void *Memory)
+{
+  bool Result = false;
+  HANDLE FileHandle =  CreateFileA(Filename,
+  GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0);
+  if(FileHandle != INVALID_HANDLE_VALUE)
+  {
+
+    DWORD BytesWritten;
+    if(WriteFile(FileHandle, Memory, MemorySize, &BytesWritten, 0))
+    {
+      //NOTE:File read successfully
+      Result = (BytesWritten == MemorySize);
+    }
+    else
+    {
+      //TODO: Logging
+    }
+    CloseHandle(FileHandle);
+  }
+  else
+  {
+    //TODO: Logging
+  }
+  return Result;
+}
 
 static void InitDSound(HWND Window, int32_t SamplespPerSecond, int32_t BufferSize)
 {

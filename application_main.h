@@ -1,13 +1,18 @@
-#if !defined(RENDERING_H)
+#if !defined(APPLICATION_MAIN_H)
 #include <math.h>
 #include <stdint.h>
 
+#include "win64_main.h"
+
+//NOTE: Services that the platform layer provides to the game
+
+
 struct graphics_offscreen_buffer
 {
-void *Memory;
-int Width;
-int Height;
-int Pitch;
+    void *Memory;
+    int Width;
+    int Height;
+    int Pitch;
 };
 
 struct sound_output_buffer
@@ -95,5 +100,5 @@ void UpdateAndRendering(graphics_offscreen_buffer *Buffer,
                         sound_output_buffer *SoundBuffer, application_input *Input, 
                         application_memory *Memory);
 
-#define RENDERING_H
+#define APPLICATION_MAIN_H
 #endif
