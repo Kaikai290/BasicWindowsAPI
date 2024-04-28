@@ -58,7 +58,7 @@ static void LoadXInput()
   HMODULE XInputLibary = LoadLibraryA("xinput1_4.dll");
   if(!XInputLibary)
   {
-    HMODULE XInputLibary = LoadLibraryA("xinput1_3.dll");
+    XInputLibary = LoadLibraryA("xinput1_3.dll");
   }
   if(XInputLibary)
   {
@@ -85,7 +85,7 @@ static debug_read_file_result DEBUGPlatformReadEntireFile(char *Filename)
       if(Result.Contents)
       {
         DWORD BytesRead;
-        if(ReadFile(FileHandle, Result.Contents, FileSize.QuadPart, &BytesRead, 0) &&
+        if(ReadFile(FileHandle, Result.Contents, (uint32_t)FileSize.QuadPart, &BytesRead, 0) &&
         (FileSize32 == BytesRead))
         {
           //NOTE:File read successfully
@@ -133,7 +133,7 @@ static bool DEBUGPlatformWriteEntireFile(char *Filename, uint64_t MemorySize, vo
   {
 
     DWORD BytesWritten;
-    if(WriteFile(FileHandle, Memory, MemorySize, &BytesWritten, 0))
+    if(WriteFile(FileHandle, Memory, (uint32_t)MemorySize, &BytesWritten, 0))
     {
       //NOTE:File read successfully
       Result = (BytesWritten == MemorySize);
@@ -237,7 +237,7 @@ static void ClearSoundBuffer(SoundOutput *SoundOutput)
   DWORD Region1Size;
   VOID *Region2;
   DWORD Region2Size;
-  if(SUCCEEDED(GlobalSecondaryBuffer->Lock(0, SoundOutput->SecondaryBufferSize, &Region1, &Region1Size, &Region2, &Region2Size, 0)));
+  if(SUCCEEDED(GlobalSecondaryBuffer->Lock(0, SoundOutput->SecondaryBufferSize, &Region1, &Region1Size, &Region2, &Region2Size, 0)))
     {
       int8_t *DestOut = (int8_t *)Region1;        
       for(DWORD ByteIndex = 0; ByteIndex < Region1Size; ++ByteIndex)
@@ -260,7 +260,7 @@ static void FillSoundBuffer(SoundOutput* SoundOutput, DWORD BytesToLock, DWORD B
   DWORD Region1Size;
   VOID *Region2;
   DWORD Region2Size;
-  if(SUCCEEDED(GlobalSecondaryBuffer->Lock(BytesToLock, BytesToWrite, &Region1, &Region1Size, &Region2, &Region2Size, 0)));
+  if(SUCCEEDED(GlobalSecondaryBuffer->Lock(BytesToLock, BytesToWrite, &Region1, &Region1Size, &Region2, &Region2Size, 0)))
   {
     // TODO(Kai); assert that Region1Size/Region2Size is valid
     DWORD Region1SampleCount = Region1Size/SoundOutput->BytesPerSample;
@@ -379,7 +379,7 @@ LRESULT MainWindowCallback(HWND Window, UINT Message, WPARAM WParam, LPARAM LPar
     case WM_KEYDOWN:
     case WM_KEYUP:
     {
-        uint32_t VKCode = WParam;
+        uint32_t VKCode = (uint32_t)WParam;
         bool WasDown = ((LParam & (1<<30)) !=0);
         bool IsDown = ((LParam & (1<<30)) == 0);
         if(WasDown != IsDown)
@@ -527,7 +527,7 @@ int CALLBACK WinMain(
           }
 
           // TODO(Kai): Should we poll this more frequently 
-          int MaxControllerCount = XUSER_MAX_COUNT;
+          DWORD MaxControllerCount = XUSER_MAX_COUNT;
           if(MaxControllerCount > ArrayCount(NewInput->Controllers))
           {
             MaxControllerCount = ArrayCount(NewInput->Controllers);
@@ -671,13 +671,13 @@ int CALLBACK WinMain(
 
           int64_t CycleElasped = EndCycleCount - LastCycleCount;
           int64_t CounterElasped = EndCounter.QuadPart - LastCounter.QuadPart;
-          int32_t MSperFrame = (int32_t)(1000* CounterElasped) / PerformanceCounterFrequency;
-          int32_t FPS = PerformanceCounterFrequency / CounterElasped;
+          int32_t MSperFrame = (int32_t)((1000* CounterElasped) / PerformanceCounterFrequency);
+          int32_t FPS = (int32_t)(PerformanceCounterFrequency / CounterElasped);
           int32_t MCPF = (int32_t)(CycleElasped/(1000*1000));
 
 
           char Buffer[256];
-          sprintf(Buffer, "%dms, %dfps, %dmc/f\n", MSperFrame, FPS, MCPF);
+          sprintf_s(Buffer, "%dms, %dfps, %dmc/f\n", MSperFrame, FPS, MCPF);
           OutputDebugStringA(Buffer);
 
           application_input *Temp = NewInput;

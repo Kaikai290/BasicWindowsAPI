@@ -96,7 +96,7 @@ static void Render(graphics_offscreen_buffer *Buffer, int XOffset, int YOffset);
 
 static void OutputSound(sound_output_buffer *SoundBuffer);
 
-void UpdateAndRendering(graphics_offscreen_buffer *Buffer, 
+static void UpdateAndRendering(graphics_offscreen_buffer *Buffer, 
                         sound_output_buffer *SoundBuffer, application_input *Input, 
                         application_memory *Memory);
 

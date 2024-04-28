@@ -10,7 +10,7 @@ static void OutputSound(sound_output_buffer *SoundBuffer)
   int16_t *SampleOut = SoundBuffer->Samples;
   for(int SampleIndex = 0; SampleIndex < SoundBuffer->SampleCount; ++SampleIndex)
   {
-    double SineValue = sinf(tSine);
+    double SineValue = sinf((float)tSine);
     int16_t SampleValue = (int16_t)(SineValue * ToneVolume);
     *SampleOut++ = SampleValue;
     *SampleOut++ = SampleValue;
@@ -28,8 +28,8 @@ static void Render(graphics_offscreen_buffer *Buffer, int XOffset, int YOffset)
     uint32_t *Pixel = (uint32_t *)Row;
     for (int X = 0; X < Buffer->Width; ++X)
     {
-      uint8_t Blue = (X + XOffset + YOffset);
-      uint8_t Green = (Y + YOffset + XOffset);
+      uint8_t Blue = (uint8_t)(X + XOffset + YOffset);
+      uint8_t Green = (uint8_t)(Y + YOffset + XOffset);
       *Pixel++ = ((Green << 8) | Blue);   
     }
     Row += Buffer->Pitch;
