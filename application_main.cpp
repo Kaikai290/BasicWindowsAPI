@@ -1,10 +1,9 @@
 #include "application_main.h"
 
-static void OutputSound(sound_output_buffer *SoundBuffer)
+static void OutputSound(sound_output_buffer *SoundBuffer, int ToneHz)
 {
   static double tSine;
   int16_t ToneVolume = 2000/2;
-  int ToneHz = 256;
   int WavePeriod = SoundBuffer->SamplePerSecond/ToneHz;
 
   int16_t *SampleOut = SoundBuffer->Samples;
@@ -28,9 +27,9 @@ static void Render(graphics_offscreen_buffer *Buffer, int XOffset, int YOffset)
     uint32_t *Pixel = (uint32_t *)Row;
     for (int X = 0; X < Buffer->Width; ++X)
     {
-      uint8_t Blue = (uint8_t)(X + XOffset + YOffset);
-      uint8_t Green = (uint8_t)(Y + YOffset + XOffset);
-      *Pixel++ = ((Green << 8) | Blue);   
+      uint8_t Blue = (uint8_t)(X + XOffset);
+      uint8_t Green = (uint8_t)(Y + YOffset);
+      *Pixel++ = ((Green << 8) | Blue);
     }
     Row += Buffer->Pitch;
   }
@@ -55,29 +54,42 @@ static void UpdateAndRendering(graphics_offscreen_buffer *Buffer, sound_output_b
     ApplicationState->ToneHz = 256;
     Memory->IsInitialized = true;
   }
-   
-  controller_input *Input0 = &Input->Controllers[0];
-  if(Input0->IsAnalog)
-  {
-    //NOTE: Use analog movement
-  }
-  else
-  {
-    //NOTE: Use digital movement
-  }
 
-  //Input.SpaceBarEndedDown;
-  //Input.SpaceBarHalfTransitionCount;
-  if(Input0->Down.EndedDown)
+  for(int ControllerIndex = 0; ControllerIndex < ArrayCount(Input->Controllers); ControllerIndex++) 
   {
-    ApplicationState->GreenOffset += 1;
+    controller_input *Controller = GetController(Input, ControllerIndex);
+    if(Controller->IsAnalog)
+    {
+      //NOTE: Use analog movement
+    }
+    else
+    {
+      if(Controller->MoveLeft.EndedDown)
+      {
+        ApplicationState->BlueOffset -= 1;
+      }
+      if(Controller->MoveRight.EndedDown)
+      {
+        ApplicationState->BlueOffset += 1;
+      }
+    }
+
+    //Input.SpaceBarEndedDown;
+    //Input.SpaceBarHalfTransitionCount;
+    // if(Controller->MoveDown.EndedDown)
+    // {
+    //   ApplicationState->GreenOffset += 1;
+    // }
+    // if(Controller->MoveRight.EndedDown)
+    // {
+    //   ApplicationState->BlueOffset -= 1;
+    // }
+
+    // Input.StartX;
+    // Input.MinX;
+    // Input.MaxX;
+    // Input.EndX;
   }
-
-  // Input.StartX;
-  // Input.MinX;
-  // Input.MaxX;
-  // Input.EndX;
-
-  OutputSound(SoundBuffer);
+  OutputSound(SoundBuffer, ApplicationState->ToneHz);
   Render(Buffer, ApplicationState->BlueOffset, ApplicationState->GreenOffset);
 }

@@ -30,49 +30,42 @@ struct button_state
 
 struct controller_input
 {
+    bool IsConnected;
     bool IsAnalog;
-
-    float StartX;
-    float StartY;
-
-    float MinX;
-    float MinY;
-    
-    float MaxX;
-    float MaxY;
-
-    float EndX;
-    float EndY;
+    float StickAverageX;
+    float StickAverageY;
     
     union
     {   
-        button_state Buttons[4];
+        button_state Buttons[8];
         struct 
         {
-            button_state Up;
-            button_state Left;
-            button_state Down;
-            button_state Right;
+            button_state MoveUp;
+            button_state MoveLeft;
+            button_state MoveDown;
+            button_state MoveRight;        
+
+            button_state ActionUp;
+            button_state ActionLeft;
+            button_state ActionDown;
+            button_state ActionRight;
         };
     };
 };
 
-struct keyboard_input
-{
-    bool IsAnalog = false;
-    button_state SpaceBar;
-    button_state W;
-    button_state A;
-    button_state S;
-    button_state D;
-};
 
 struct application_input
 {
     // TODO: Insert clock value here.
-    controller_input Controllers[4];
-    keyboard_input Keyboard[4];
+    controller_input Controllers[5];
 };
+inline controller_input *GetController(application_input *Input, int ControllerIndex)
+{
+    Assert(ControllerIndex < ArrayCount(Input->Controllers));
+
+    controller_input *Result = &Input->Controllers[ControllerIndex];
+    return Result;
+}
 
 struct application_state
 {
